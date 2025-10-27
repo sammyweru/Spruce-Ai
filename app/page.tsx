@@ -164,7 +164,7 @@ const App: React.FC = () => {
 
     } catch(e) {
         console.error(e);
-        const errorMessage = "I'm having trouble connecting. Please try again in a moment.";
+        const errorMessage = e instanceof Error ? e.message : "An unexpected error occurred. Please try again.";
         setError(errorMessage);
         setChatHistory(prev => [...prev, { sender: 'ai', text: errorMessage, timestamp: new Date().toISOString() }]);
     } finally {
@@ -195,7 +195,7 @@ const App: React.FC = () => {
         setGeneratedImage(result);
     } catch (e) {
         console.error(e);
-        const errorMessage = `I had trouble generating the ${season} view. Please try again.`;
+        const errorMessage = e instanceof Error ? e.message : `I had trouble generating the ${season} view. Please try again.`;
         setError(errorMessage);
         setSeasonalDesigns(prev => ({ ...prev, [season]: undefined }));
         setActiveSeason(null);
@@ -232,7 +232,7 @@ const App: React.FC = () => {
         setChatHistory(prev => [...prev, aiResponse]);
     } catch(e) {
         console.error("Failed to find shoppable items:", e);
-        const errorMessage = "Sorry, I couldn't find any products for that item. It might be a custom piece or I'm having trouble connecting. Please try again.";
+        const errorMessage = e instanceof Error ? e.message : "Sorry, I couldn't find any products for that item. Please try again.";
         setError(errorMessage);
         setChatHistory(prev => [...prev, { sender: 'ai', text: errorMessage, timestamp: new Date().toISOString() }]);
     } finally {
@@ -254,7 +254,8 @@ const App: React.FC = () => {
       setStyleProfile(newProfile);
     } catch (e) {
       console.error("Failed to pin:", e);
-      setError("Could not add to mood board.");
+      const errorMessage = e instanceof Error ? e.message : "Could not add to mood board.";
+      setError(errorMessage);
     } finally {
       setIsPinning(false);
     }
@@ -307,7 +308,8 @@ const App: React.FC = () => {
         setShowDIYGuideModal(true);
     } catch (e) {
         console.error("Failed to generate DIY guide", e);
-        setError("Sorry, I couldn't generate the guide for this design.");
+        const errorMessage = e instanceof Error ? e.message : "Sorry, I couldn't generate the guide for this design.";
+        setError(errorMessage);
     } finally {
         setIsBotResponding(false);
     }

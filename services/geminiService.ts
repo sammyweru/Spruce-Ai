@@ -1,15 +1,21 @@
 import { GoogleGenAI, Modality, GenerateContentResponse, Type } from "@google/genai";
 import { ChatMessage, ImageFile, StyleProfile, HomeProfile, InventoryItem } from '../types';
 
-// In a Next.js app, environment variables for the browser MUST be prefixed with NEXT_PUBLIC_.
-const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+let aiInstance: GoogleGenAI;
 
-if (!apiKey) {
-    // This error is caught by the calling function and displayed to the user.
-    throw new Error("NEXT_PUBLIC_API_KEY environment variable is not set. Please ensure it's configured in your Vercel project settings.");
-}
+const getAiClient = (): GoogleGenAI => {
+  if (!aiInstance) {
+    // In a Next.js app, environment variables for the browser MUST be prefixed with NEXT_PUBLIC_.
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    if (!apiKey) {
+      // This error message is now more specific and will be displayed directly to the user.
+      throw new Error("API Key is not configured. Please add NEXT_PUBLIC_API_KEY to your environment variables in Vercel.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
 
-const ai = new GoogleGenAI({ apiKey });
 
 const fileToGenerativePart = (file: ImageFile) => {
   return {
@@ -55,14 +61,17 @@ export const conversationaLDesign = async (
     inventoryItems?: InventoryItem[],
 ): Promise<ConversationalDesignResponse> => {
     
+    if (designMode === 'upcycle') {
+      return generateUpcyclePlan(image, prompt);
+    }
+    
+    const ai = getAiClient();
+    
     let systemPrompt = '';
     switch(designMode) {
         case 'interior': systemPrompt = INTERIOR_SYSTEM_PROMPT; break;
         case 'exterior': systemPrompt = EXTERIOR_SYSTEM_PROMPT; break;
         case 'doctor': systemPrompt = DOCTOR_SYSTEM_PROMPT; break;
-        case 'upcycle':
-            // This mode is handled by generateUpcyclePlan
-            return generateUpcyclePlan(image, prompt);
     }
     
     const styleProfileDescription = Object.entries(styleProfile)
@@ -72,7 +81,6 @@ export const conversationaLDesign = async (
 
     let fullPrompt = `User request: "${prompt}"`;
 
-    // Add context from Home Profile if available
     if (homeProfile) {
         let profileContext = `\n\nUSER'S HOME PROFILE:
 - House Type: ${homeProfile.houseType}
@@ -103,9 +111,6 @@ export const conversationaLDesign = async (
         contents: { parts: [...imageParts, { text: fullPrompt }] },
         config: {
             systemInstruction: `${systemPrompt}\nUSER'S STYLE PROFILE: ${styleProfileDescription || 'None yet'}.`,
-            // FIX: Corrected responseModalities to align with Gemini API guidelines.
-            // Text-only responses (doctor mode) don't need a modality, and image responses
-            // should only specify [Modality.IMAGE].
             responseModalities: designMode !== 'doctor' ? [Modality.IMAGE] : undefined,
         }
     });
@@ -132,6 +137,7 @@ export const conversationaLDesign = async (
 };
 
 export const findShoppableItems = async (image: ImageFile, budget?: string, clickPosition?: {x: number, y: number}): Promise<GenerateContentResponse> => {
+    const ai = getAiClient();
     const imagePart = fileToGenerativePart(image);
     let textPrompt = `A user has clicked on an item in the attached image.`;
 
@@ -160,6 +166,7 @@ export const findShoppableItems = async (image: ImageFile, budget?: string, clic
 };
 
 export const generateDIYGuide = async (image: ImageFile): Promise<string> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
@@ -176,6 +183,7 @@ export const generateDIYGuide = async (image: ImageFile): Promise<string> => {
 };
 
 export const generateUpcyclePlan = async (image: ImageFile, prompt: string): Promise<ConversationalDesignResponse> => {
+    const ai = getAiClient();
     const systemInstruction = `${KENYA_CONTEXT} You are the "Spruce Upcycle Coach". The user has provided an image of a piece of furniture they want to upcycle and a text prompt.
     Your task is to provide a complete upcycling plan.
     1.  **Identify the Item:** Start by identifying the furniture (e.g., "This looks like a 6-drawer wooden dresser.").
@@ -195,8 +203,6 @@ export const generateUpcyclePlan = async (image: ImageFile, prompt: string): Pro
         },
         config: {
             systemInstruction,
-            // FIX: Corrected responseModalities to align with Gemini API guidelines.
-            // It should be an array with a single Modality.IMAGE element.
             responseModalities: [Modality.IMAGE],
         }
     });
@@ -219,6 +225,7 @@ export const generateUpcyclePlan = async (image: ImageFile, prompt: string): Pro
 };
 
 export const generateVirtualStaging = async (image: ImageFile, style: string): Promise<ImageFile> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
@@ -242,6 +249,7 @@ export const generateVirtualStaging = async (image: ImageFile, style: string): P
 };
 
 export const generateConciergeTip = async (profile: HomeProfile): Promise<string> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: `You are an AI Home Concierge for a user in Nairobi, Kenya. Here is their profile:
@@ -256,6 +264,7 @@ export const generateConciergeTip = async (profile: HomeProfile): Promise<string
 };
 
 export const extractColorPalette = async (image: ImageFile): Promise<string[]> => {
+    const ai = getAiClient();
     const imagePart = fileToGenerativePart(image);
     const textPart = { text: "Analyze this image and identify the 5 most prominent colors. Return them as an array of hex codes." };
 
@@ -286,6 +295,7 @@ export const extractColorPalette = async (image: ImageFile): Promise<string[]> =
 };
 
 export const generateSeasonalLandscape = async (image: ImageFile, season: string): Promise<ImageFile> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
