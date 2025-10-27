@@ -44,12 +44,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 {validSources.map((source, index) => (
                     <a 
                         key={index} 
-                        href={source.web!.uri} 
+                        href={source.web!.uri!} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-xs bg-slate-200 hover:bg-slate-300 text-teal-700 px-2 py-1 rounded-md transition-colors font-medium"
                     >
-                        {source.web!.title || new URL(source.web!.uri).hostname}
+                        {source.web!.title || new URL(source.web!.uri!).hostname}
                     </a>
                 ))}
             </div>
