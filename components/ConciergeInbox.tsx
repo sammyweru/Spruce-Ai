@@ -6,15 +6,21 @@ import { BellIcon } from './icons';
 
 interface ConciergeInboxProps {
   profile: HomeProfile;
+  isDemoMode: boolean;
 }
 
-const ConciergeInbox: React.FC<ConciergeInboxProps> = ({ profile }) => {
+const ConciergeInbox: React.FC<ConciergeInboxProps> = ({ profile, isDemoMode }) => {
   const [tip, setTip] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchTip = async () => {
       setIsLoading(true);
+      if (isDemoMode) {
+        setTip("AI Concierge tips are disabled in Demo Mode. Add your API key to enable this feature.");
+        setIsLoading(false);
+        return;
+      }
       try {
         const generatedTip = await generateConciergeTip(profile);
         setTip(generatedTip);
@@ -33,7 +39,7 @@ const ConciergeInbox: React.FC<ConciergeInboxProps> = ({ profile }) => {
       }
     };
     fetchTip();
-  }, [profile]);
+  }, [profile, isDemoMode]);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md border border-slate-200">

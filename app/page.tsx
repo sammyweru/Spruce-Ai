@@ -29,6 +29,7 @@ import DIYGuideModal from '../components/DIYGuideModal';
 import SeasonalVisualizer from '../components/SeasonalVisualizer';
 import MyDesignsView from '../components/MyDesignsView';
 import SideNav from '../components/SideNav';
+import DemoModeBanner from '../components/DemoModeBanner';
 
 type AppMode = 'personal' | 'pro';
 type View = 'dashboard' | 'designer' | 'projects' | 'project_hub' | 'logbook' | 'showroom' | 'designs';
@@ -53,6 +54,8 @@ const getApiErrorMessage = (e: unknown): string => {
     return "An unexpected error occurred. Please try again.";
 };
 
+// Check for API key at the module level. This determines if we run in demo mode.
+const isDemoMode = !process.env.NEXT_PUBLIC_API_KEY;
 
 const App: React.FC = () => {
   // Core App State
@@ -153,7 +156,10 @@ const App: React.FC = () => {
   };
 
   const handleSendMessage = async (message: string) => {
-    if (isBotResponding || !originalImage) return;
+    if (isBotResponding || !originalImage || isDemoMode) {
+        if (isDemoMode) setError("AI features are disabled in Demo Mode. Please add your API key to enable them.");
+        return;
+    }
 
     setChatHistory(prev => [...prev, { sender: 'user', text: message, timestamp: new Date().toISOString() }]);
     setIsBotResponding(true);
@@ -185,8 +191,10 @@ const App: React.FC = () => {
   };
 
   const handleSelectSeason = async (season: Season) => {
-    if (isGeneratingSeason || !originalImage) return;
-
+    if (isGeneratingSeason || !originalImage || isDemoMode) {
+        if (isDemoMode) setError("AI features are disabled in Demo Mode.");
+        return;
+    }
     if (activeSeason === season) return;
     
     setActiveSeason(season);
@@ -218,29 +226,24 @@ const App: React.FC = () => {
   };
   
   const handleItemSelect = async (x: number, y: number, displayWidth: number, displayHeight: number) => {
-    if (!generatedImage || isFindingItems || isBotResponding) return;
+    if (!generatedImage || isFindingItems || isBotResponding || isDemoMode) {
+        if (isDemoMode) setError("AI features are disabled in Demo Mode.");
+        return;
+    }
 
     setIsFindingItems(true);
-    // Add a user-like message to the chat history to represent the click action.
     setChatHistory(prev => [...prev, { sender: 'user', text: "What's this item and where can I buy it?", timestamp: new Date().toISOString() }]);
     setError(null);
 
     try {
-        // Normalize coordinates to be between 0 and 1.
-        const clickPosition = {
-            x: x / displayWidth,
-            y: y / displayHeight
-        };
-        
+        const clickPosition = { x: x / displayWidth, y: y / displayHeight };
         const response = await findShoppableItems(generatedImage, budget, clickPosition);
-        
         const aiResponse: ChatMessage = { 
             sender: 'ai', 
             text: response.text ?? "I found some items, please see the links below.",
             sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks || [],
             timestamp: new Date().toISOString()
         };
-        
         setChatHistory(prev => [...prev, aiResponse]);
     } catch(e) {
         console.error("Failed to find shoppable items:", e);
@@ -253,7 +256,10 @@ const App: React.FC = () => {
   };
 
   const handlePinToBoard = async () => {
-    if (!generatedImage || isPinning) return;
+    if (!generatedImage || isPinning || isDemoMode) {
+        if (isDemoMode) setError("AI features are disabled in Demo Mode.");
+        return;
+    }
     
     setIsPinning(true);
     try {
@@ -280,23 +286,12 @@ const App: React.FC = () => {
     try {
         const originalImageId = `img-${Date.now()}-orig`;
         const generatedImageId = `img-${Date.now()}-gen`;
-
-        // Save full base64 images to IndexedDB
         await dbService.saveImage(originalImageId, originalImage.base64);
         await dbService.saveImage(generatedImageId, generatedImage.base64);
-        
         const newDesign: SavedDesign = {
             id: `design-${Date.now()}`,
-            originalImage: {
-                id: originalImageId,
-                mimeType: originalImage.mimeType,
-                name: originalImage.name,
-            },
-            generatedImage: {
-                id: generatedImageId,
-                mimeType: generatedImage.mimeType,
-                name: generatedImage.name,
-            },
+            originalImage: { id: originalImageId, mimeType: originalImage.mimeType, name: originalImage.name },
+            generatedImage: { id: generatedImageId, mimeType: generatedImage.mimeType, name: generatedImage.name },
             style: lastUsedStyle,
             timestamp: new Date().toISOString(),
         };
@@ -312,7 +307,10 @@ const App: React.FC = () => {
   };
 
   const handleGenerateDIYGuide = async () => {
-    if (!generatedImage) return;
+    if (!generatedImage || isDemoMode) {
+        if (isDemoMode) setError("AI features are disabled in Demo Mode.");
+        return;
+    }
     setIsBotResponding(true);
     try {
         const guide = await generateDIYGuide(generatedImage);
@@ -329,18 +327,8 @@ const App: React.FC = () => {
 
   const handleStartProject = (proName: string) => {
     const newProject: Project = {
-        id: `proj-${Date.now()}`,
-        name: `Renovation with ${proName}`,
-        proName,
-        budgetTotal: 250000,
-        moodboard: [],
-        budgetItems: [],
-        messages: [{
-            id: `msg-${Date.now()}`,
-            sender: 'pro',
-            text: `Hi! I'm ${proName}. Looking forward to working on your project. I've set up this hub for us to collaborate.`,
-            timestamp: new Date().toISOString()
-        }]
+        id: `proj-${Date.now()}`, name: `Renovation with ${proName}`, proName, budgetTotal: 250000, moodboard: [], budgetItems: [],
+        messages: [{ id: `msg-${Date.now()}`, sender: 'pro', text: `Hi! I'm ${proName}. Looking forward to working on your project. I've set up this hub for us to collaborate.`, timestamp: new Date().toISOString() }]
     };
     const updatedProjects = [newProject, ...projects];
     setProjects(updatedProjects);
@@ -354,9 +342,7 @@ const App: React.FC = () => {
     const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
     setProjects(updatedProjects);
     storage.set(STORAGE_KEYS.PROJECTS, updatedProjects);
-    if (activeProject?.id === updatedProject.id) {
-      setActiveProject(updatedProject);
-    }
+    if (activeProject?.id === updatedProject.id) setActiveProject(updatedProject);
   };
   
   const handleUpdateLogbookEntries = (newEntries: LogEntry[]) => {
@@ -370,6 +356,7 @@ const App: React.FC = () => {
   }
 
   const getUploaderDescription = () => {
+    if (isDemoMode) return "Welcome to Spruce! This is a demo mode because an API key is not set. You can explore the UI, but AI features are disabled.";
     switch (designMode) {
         case 'interior': return "Upload a photo of your room to get started. Let's create your dream space!";
         case 'exterior': return "Upload a photo of your home's exterior to improve its curb appeal.";
@@ -382,26 +369,19 @@ const App: React.FC = () => {
   const renderDashboard = () => (
     <div className="space-y-8">
         <h1 className="text-4xl font-bold text-slate-800">Dashboard</h1>
-        {homeProfile && <ConciergeInbox profile={homeProfile} />}
-        
+        {homeProfile && <ConciergeInbox profile={homeProfile} isDemoMode={isDemoMode} />}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-lg shadow-md border border-slate-200">
                 <h2 className="text-xl font-bold text-slate-800 mb-4">Quick Actions</h2>
                 <div className="space-y-3">
-                    <button
-                        onClick={() => setCurrentView('designer')}
-                        className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-teal-50 rounded-lg transition-colors text-left"
-                    >
+                    <button onClick={() => setCurrentView('designer')} className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-teal-50 rounded-lg transition-colors text-left">
                         <SwatchIcon className="w-8 h-8 text-teal-600" />
                         <div>
                             <p className="font-semibold text-slate-800">Start New Design</p>
                             <p className="text-sm text-slate-500">Create a new look with the AI Designer</p>
                         </div>
                     </button>
-                    <button
-                        onClick={() => setCurrentView('projects')}
-                        className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-teal-50 rounded-lg transition-colors text-left"
-                    >
+                    <button onClick={() => setCurrentView('projects')} className="w-full flex items-center gap-4 p-4 bg-slate-50 hover:bg-teal-50 rounded-lg transition-colors text-left">
                         <FolderIcon className="w-8 h-8 text-teal-600" />
                         <div>
                             <p className="font-semibold text-slate-800">View My Projects</p>
@@ -416,23 +396,16 @@ const App: React.FC = () => {
                     <div className="space-y-3">
                         {savedDesigns.slice(0, 2).map(design => (
                             <button key={design.id} onClick={() => setCurrentView('designs')} className="w-full p-2 bg-slate-50 hover:bg-teal-50 rounded-lg transition-colors text-left flex items-center gap-3">
-                                <div className="w-12 h-12 bg-slate-200 rounded-md flex-shrink-0">
-                                    {/* In a real app with thumbnails, you'd load the image here */}
-                                    <RectangleGroupIcon className="w-full h-full text-slate-400 p-2" />
-                                </div>
+                                <div className="w-12 h-12 bg-slate-200 rounded-md flex-shrink-0"><RectangleGroupIcon className="w-full h-full text-slate-400 p-2" /></div>
                                 <div>
                                     <p className="font-semibold text-slate-800 text-sm">{design.style}</p>
                                     <p className="text-xs text-slate-500">Saved on {new Date(design.timestamp).toLocaleDateString()}</p>
                                 </div>
                             </button>
                         ))}
-                        {savedDesigns.length > 2 && (
-                             <button onClick={() => setCurrentView('designs')} className="text-sm font-semibold text-teal-600 hover:underline mt-2">View all {savedDesigns.length} designs</button>
-                        )}
+                        {savedDesigns.length > 2 && (<button onClick={() => setCurrentView('designs')} className="text-sm font-semibold text-teal-600 hover:underline mt-2">View all {savedDesigns.length} designs</button>)}
                     </div>
-                ) : (
-                    <p className="text-sm text-slate-500">You haven't saved any designs yet.</p>
-                )}
+                ) : (<p className="text-sm text-slate-500">You haven't saved any designs yet.</p>)}
             </div>
         </div>
     </div>
@@ -442,12 +415,8 @@ const App: React.FC = () => {
     <>
         {!originalImage ? (
           <div className="text-center min-h-[70vh] flex flex-col justify-center items-center">
-              <h2 style={{ animationDelay: '0.1s', opacity: 0 }} className="text-4xl sm:text-6xl font-extrabold text-slate-800 tracking-tight animate-fade-in-up">
-                  Spruce AI Designer
-              </h2>
-              <p style={{ animationDelay: '0.2s', opacity: 0 }} className="mt-4 max-w-xl mx-auto text-lg text-slate-500 animate-fade-in-up">
-                  {getUploaderDescription()}
-              </p>
+              <h2 style={{ animationDelay: '0.1s', opacity: 0 }} className="text-4xl sm:text-6xl font-extrabold text-slate-800 tracking-tight animate-fade-in-up">Spruce AI Designer</h2>
+              <p style={{ animationDelay: '0.2s', opacity: 0 }} className="mt-4 max-w-xl mx-auto text-lg text-slate-500 animate-fade-in-up">{getUploaderDescription()}</p>
               <div style={{ animationDelay: '0.3s', opacity: 0 }} className="mt-8 animate-fade-in-up">
                 <ImageUploader onImageUpload={handleImageUpload} disabled={isBotResponding}>
                   <span className="inline-flex items-center gap-3 px-8 py-4 bg-teal-600 text-white font-bold rounded-full shadow-lg hover:bg-teal-500 transition-all cursor-pointer">
@@ -460,55 +429,22 @@ const App: React.FC = () => {
         ) : (
           <div className="space-y-8">
              {error && <div className="text-center text-red-700 bg-red-100 border border-red-200 p-4 rounded-lg">{error}</div>}
-            
-            {designMode === 'exterior' && (
-                <SeasonalVisualizer 
-                    designs={seasonalDesigns}
-                    activeSeason={activeSeason}
-                    onSelectSeason={handleSelectSeason}
-                    isGenerating={isGeneratingSeason}
-                />
-            )}
-
+             {designMode === 'exterior' && (<SeasonalVisualizer designs={seasonalDesigns} activeSeason={activeSeason} onSelectSeason={handleSelectSeason} isGenerating={isGeneratingSeason}/>)}
             {generatedImage ? (
               <div className="space-y-8 animate-fade-in-up">
-                <ImageComparator 
-                  originalImage={`data:${originalImage.mimeType};base64,${originalImage.base64}`}
-                  generatedImage={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`}
-                  activeFilter={activeFilter}
-                  onItemSelect={handleItemSelect}
-                  isSelectable={!isFindingItems && !isBotResponding}
-                />
+                <ImageComparator originalImage={`data:${originalImage.mimeType};base64,${originalImage.base64}`} generatedImage={`data:${generatedImage.mimeType};base64,${generatedImage.base64}`} activeFilter={activeFilter} onItemSelect={handleItemSelect} isSelectable={!isFindingItems && !isBotResponding}/>
                 <p className="text-center text-sm text-slate-500 -mt-4">✨ Click an item in the generated image to find where to buy it!</p>
                 <ImageFilterControls activeFilter={activeFilter} onSelectFilter={setActiveFilter}/>
                 <div className="text-center flex flex-wrap justify-center gap-4">
-                      <button onClick={handleSaveDesign} disabled={isSavingDesign} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-700 border border-slate-200 font-semibold rounded-lg hover:bg-slate-100 transition-colors shadow-lg disabled:opacity-50">
-                        <BookmarkIcon className="w-5 h-5" />
-                        <span>{isSavingDesign ? 'Saving...' : 'Save Design'}</span>
-                      </button>
-                      <button onClick={handleGenerateDIYGuide} disabled={isBotResponding} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-700 border border-slate-200 font-semibold rounded-lg hover:bg-slate-100 transition-colors shadow-lg">
-                          <ClipboardCheckIcon className="w-5 h-5" />
-                          <span>Generate DIY Guide</span>
-                      </button>
-                      <button onClick={handlePinToBoard} disabled={isPinning} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-700 transition-colors shadow-lg">
-                          <PinIcon className="w-5 h-5" />
-                          <span>{isPinning ? 'Pinning...' : 'Pin to Mood Board'}</span>
-                      </button>
+                      <button onClick={handleSaveDesign} disabled={isSavingDesign} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-700 border border-slate-200 font-semibold rounded-lg hover:bg-slate-100 transition-colors shadow-lg disabled:opacity-50"><BookmarkIcon className="w-5 h-5" /><span>{isSavingDesign ? 'Saving...' : 'Save Design'}</span></button>
+                      <button onClick={handleGenerateDIYGuide} disabled={isBotResponding || isDemoMode} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-700 border border-slate-200 font-semibold rounded-lg hover:bg-slate-100 transition-colors shadow-lg disabled:opacity-50"><ClipboardCheckIcon className="w-5 h-5" /><span>Generate DIY Guide</span></button>
+                      <button onClick={handlePinToBoard} disabled={isPinning || isDemoMode} className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-slate-800 text-white font-semibold rounded-lg hover:bg-slate-700 transition-colors shadow-lg disabled:opacity-50"><PinIcon className="w-5 h-5" /><span>{isPinning ? 'Pinning...' : 'Pin to Mood Board'}</span></button>
                 </div>
               </div>
-            ) : (
-              <div className="bg-slate-100/50 border border-slate-200/80 rounded-lg p-4">
-                  <img src={`data:${originalImage.mimeType};base64,${originalImage.base64}`} alt="Original" className="rounded-lg w-full max-w-2xl mx-auto shadow-md"/>
-              </div>
-            )}
-
-            <ChatInterface 
-              messages={chatHistory} 
-              onSendMessage={handleSendMessage} 
-              disabled={!originalImage || isGeneratingSeason}
-              isBotResponding={isBotResponding}
-              isFindingItems={isFindingItems}
+            ) : (<div className="bg-slate-100/50 border border-slate-200/80 rounded-lg p-4"><img src={`data:${originalImage.mimeType};base64,${originalImage.base64}`} alt="Original" className="rounded-lg w-full max-w-2xl mx-auto shadow-md"/></div>)}
+            <ChatInterface messages={chatHistory} onSendMessage={handleSendMessage} disabled={!originalImage || isGeneratingSeason || isDemoMode} isBotResponding={isBotResponding} isFindingItems={isFindingItems}
               placeholder={
+                  isDemoMode ? "Chat is disabled in Demo Mode" :
                   designMode === 'doctor' ? "Describe the problem in more detail..." :
                   designMode === 'upcycle' ? "e.g., 'Make it modern and minimalist'" :
                   "e.g., 'Make this room feel more spacious'"
@@ -539,45 +475,28 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-slate-100 text-slate-800">
       <SideNav 
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        appMode={appMode}
-        setAppMode={setAppMode}
-        onShowProfile={() => setShowProfileModal(true)}
-        isCollapsed={isSideNavCollapsed}
-        onToggleCollapse={() => setIsSideNavCollapsed(prev => !prev)}
+        currentView={currentView} setCurrentView={setCurrentView} appMode={appMode} setAppMode={setAppMode} onShowProfile={() => setShowProfileModal(true)}
+        isCollapsed={isSideNavCollapsed} onToggleCollapse={() => setIsSideNavCollapsed(prev => !prev)}
       />
-
       <main className="flex-1 overflow-y-auto">
+        {isDemoMode && <DemoModeBanner />}
         <div className="p-4 sm:p-6 lg:p-8">
-
             {currentView === 'designer' && appMode === 'personal' && (
                 <div className="mb-8 space-y-4 max-w-4xl mx-auto">
                 <DesignModeToggle selectedMode={designMode} onModeChange={setDesignMode} />
                 {originalImage && designMode !== 'doctor' && designMode !== 'upcycle' && (
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
                         <BudgetSelector selectedBudget={budget} onSelectBudget={setBudget} />
-                        <InventoryManager 
-                            inventory={inventory}
-                            onUpdateInventory={handleUpdateInventory}
-                            activeItems={activeInventoryItems}
-                            setActiveItems={setActiveInventoryItems}
-                        />
+                        <InventoryManager inventory={inventory} onUpdateInventory={handleUpdateInventory} activeItems={activeInventoryItems} setActiveItems={setActiveInventoryItems} />
                     </div>
                 )}
                 </div>
             )}
-
             {renderCurrentView()}
-
             <footer className="text-center py-8 mt-16 text-slate-400 text-sm border-t border-slate-200">
                 <SpruceIcon className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                 <p>&copy; {new Date().getFullYear()} Spruce AI. All Rights Reserved.</p>
-                <div className="mt-2 space-x-4">
-                    <a href="#" className="hover:text-slate-600">About</a>
-                    <a href="#" className="hover:text-slate-600">Contact</a>
-                    <a href="#" className="hover:text-slate-600">Privacy Policy</a>
-                </div>
+                <div className="mt-2 space-x-4"><a href="#" className="hover:text-slate-600">About</a><a href="#" className="hover:text-slate-600">Contact</a><a href="#" className="hover:text-slate-600">Privacy Policy</a></div>
             </footer>
         </div>
       </main>
