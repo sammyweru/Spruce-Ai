@@ -1,17 +1,11 @@
-
-
-
-
-
-
 import { GoogleGenAI, Modality, GenerateContentResponse, Type } from "@google/genai";
 import { ChatMessage, ImageFile, StyleProfile, HomeProfile, InventoryItem } from '../types';
 
-if (!process.env.NEXT_PUBLIC_API_KEY) {
-    throw new Error("NEXT_PUBLIC_API_KEY environment variable is not set");
+if (!process.env.API_KEY) {
+    throw new Error("API_KEY environment variable is not set");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const fileToGenerativePart = (file: ImageFile) => {
   return {
