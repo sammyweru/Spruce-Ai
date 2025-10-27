@@ -28,7 +28,14 @@ const ProToolkitView: React.FC<ProToolkitViewProps> = ({ onImageStaged }) => {
             onImageStaged(result);
         } catch (e) {
             console.error("Failed to stage image:", e);
-            setError("Sorry, the virtual staging failed. Please try again.");
+            const errorString = String(e);
+            if (errorString.includes("API key not valid")) {
+                setError("It seems there's an issue with the API key. Please check your `NEXT_PUBLIC_API_KEY` in your Vercel project settings.");
+            } else if (e instanceof Error) {
+                setError(e.message);
+            } else {
+                setError("Sorry, the virtual staging failed. Please try again.");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -73,7 +80,7 @@ const ProToolkitView: React.FC<ProToolkitViewProps> = ({ onImageStaged }) => {
                     </div>
                 )}
 
-                {error && <p className="text-center text-red-600">{error}</p>}
+                {error && <p className="text-center text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
 
                 {emptyRoomImage && (
                     <div className="p-4 bg-white rounded-lg shadow-md border border-slate-200 flex flex-col md:flex-row items-center justify-center gap-4">

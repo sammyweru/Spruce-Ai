@@ -20,7 +20,14 @@ const ConciergeInbox: React.FC<ConciergeInboxProps> = ({ profile }) => {
         setTip(generatedTip);
       } catch (e) {
         console.error("Failed to fetch concierge tip", e);
-        setTip("Could not fetch a tip right now. Please check back later!");
+        const errorString = String(e);
+        if (errorString.includes("API key not valid")) {
+             setTip("Could not fetch a tip: The API key is not valid. Please check your Vercel project settings.");
+        } else if (e instanceof Error) {
+            setTip(`Could not fetch a tip right now: ${e.message}`);
+        } else {
+            setTip("Could not fetch a tip right now. Please check back later!");
+        }
       } finally {
         setIsLoading(false);
       }

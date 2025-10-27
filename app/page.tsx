@@ -42,6 +42,18 @@ interface SeasonalDesigns {
     Winter?: ImageFile | 'loading';
 }
 
+const getApiErrorMessage = (e: unknown): string => {
+    const errorString = String(e); // Convert the error to a string to be safe.
+    if (errorString.includes("API key not valid")) {
+        return "It seems there's an issue with the API key. The server responded with: 'API key not valid'. Please go to your project settings on Vercel, find the Environment Variables section, and ensure that `NEXT_PUBLIC_API_KEY` has a correct and valid value.";
+    }
+    if (e instanceof Error) {
+        return e.message; // This will preserve other specific error messages, like "API Key is not configured".
+    }
+    return "An unexpected error occurred. Please try again.";
+};
+
+
 const App: React.FC = () => {
   // Core App State
   const [appMode, setAppMode] = useState<AppMode>('personal');
@@ -164,7 +176,7 @@ const App: React.FC = () => {
 
     } catch(e) {
         console.error(e);
-        const errorMessage = e instanceof Error ? e.message : "An unexpected error occurred. Please try again.";
+        const errorMessage = getApiErrorMessage(e);
         setError(errorMessage);
         setChatHistory(prev => [...prev, { sender: 'ai', text: errorMessage, timestamp: new Date().toISOString() }]);
     } finally {
@@ -195,7 +207,7 @@ const App: React.FC = () => {
         setGeneratedImage(result);
     } catch (e) {
         console.error(e);
-        const errorMessage = e instanceof Error ? e.message : `I had trouble generating the ${season} view. Please try again.`;
+        const errorMessage = getApiErrorMessage(e);
         setError(errorMessage);
         setSeasonalDesigns(prev => ({ ...prev, [season]: undefined }));
         setActiveSeason(null);
@@ -232,7 +244,7 @@ const App: React.FC = () => {
         setChatHistory(prev => [...prev, aiResponse]);
     } catch(e) {
         console.error("Failed to find shoppable items:", e);
-        const errorMessage = e instanceof Error ? e.message : "Sorry, I couldn't find any products for that item. Please try again.";
+        const errorMessage = getApiErrorMessage(e);
         setError(errorMessage);
         setChatHistory(prev => [...prev, { sender: 'ai', text: errorMessage, timestamp: new Date().toISOString() }]);
     } finally {
@@ -254,7 +266,7 @@ const App: React.FC = () => {
       setStyleProfile(newProfile);
     } catch (e) {
       console.error("Failed to pin:", e);
-      const errorMessage = e instanceof Error ? e.message : "Could not add to mood board.";
+      const errorMessage = getApiErrorMessage(e);
       setError(errorMessage);
     } finally {
       setIsPinning(false);
@@ -308,7 +320,7 @@ const App: React.FC = () => {
         setShowDIYGuideModal(true);
     } catch (e) {
         console.error("Failed to generate DIY guide", e);
-        const errorMessage = e instanceof Error ? e.message : "Sorry, I couldn't generate the guide for this design.";
+        const errorMessage = getApiErrorMessage(e);
         setError(errorMessage);
     } finally {
         setIsBotResponding(false);
