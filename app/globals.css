@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.filter-none { filter: none; }
+.filter-black-and-white { filter: grayscale(100%); }
+.filter-sepia { filter: sepia(100%); }
+.filter-vintage { filter: sepia(60%) contrast(75%) brightness(125%) saturate(125%); }
+.filter-cool { filter: contrast(110%) saturate(150%) brightness(90%); }
+.filter-warm { filter: sepia(40%) saturate(150%) brightness(110%); }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
