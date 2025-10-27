@@ -1,6 +1,7 @@
 
 
 
+
 import { GoogleGenAI, Modality, GenerateContentResponse, Type } from "@google/genai";
 import { ChatMessage, ImageFile, StyleProfile, HomeProfile, InventoryItem } from '../types';
 
@@ -115,7 +116,7 @@ export const conversationaLDesign = async (
     for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.text) {
             textResponse = part.text;
-        } else if (part.inlineData) {
+        } else if (part.inlineData && part.inlineData.data) {
             imageResponse = {
                 base64: part.inlineData.data,
                 mimeType: part.inlineData.mimeType,
@@ -206,7 +207,7 @@ export const generateUpcyclePlan = async (image: ImageFile, prompt: string): Pro
     for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.text) {
             textResponse = part.text;
-        } else if (part.inlineData) {
+        } else if (part.inlineData && part.inlineData.data) {
             imageResponse = {
                 base64: part.inlineData.data,
                 mimeType: part.inlineData.mimeType,
@@ -230,7 +231,7 @@ export const generateVirtualStaging = async (image: ImageFile, style: string): P
     });
     
     const firstPart = response.candidates?.[0]?.content?.parts[0];
-    if (firstPart && firstPart.inlineData) {
+    if (firstPart && firstPart.inlineData && firstPart.inlineData.data) {
         return {
             base64: firstPart.inlineData.data,
             mimeType: firstPart.inlineData.mimeType,
@@ -298,7 +299,7 @@ export const generateSeasonalLandscape = async (image: ImageFile, season: string
     });
 
     const firstPart = response.candidates?.[0]?.content?.parts[0];
-    if (firstPart && firstPart.inlineData) {
+    if (firstPart && firstPart.inlineData && firstPart.inlineData.data) {
         return {
             base64: firstPart.inlineData.data,
             mimeType: firstPart.inlineData.mimeType,
