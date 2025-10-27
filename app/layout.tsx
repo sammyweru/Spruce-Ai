@@ -1,3 +1,5 @@
+// FIX: Add React import for React.ReactNode type
+import React from 'react';
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
