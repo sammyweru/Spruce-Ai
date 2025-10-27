@@ -3,6 +3,7 @@
 
 
 
+
 import { GoogleGenAI, Modality, GenerateContentResponse, Type } from "@google/genai";
 import { ChatMessage, ImageFile, StyleProfile, HomeProfile, InventoryItem } from '../types';
 
@@ -173,7 +174,7 @@ export const generateDIYGuide = async (image: ImageFile): Promise<string> => {
             ]
         },
     });
-    return response.text;
+    return response.text ?? "Sorry, I could not generate a guide for this design. Please try again.";
 };
 
 export const generateUpcyclePlan = async (image: ImageFile, prompt: string): Promise<ConversationalDesignResponse> => {
@@ -253,7 +254,7 @@ export const generateConciergeTip = async (profile: HomeProfile): Promise<string
         
         Generate a single, short, proactive, and helpful tip for them. It could be a maintenance reminder relevant to the Nairobi climate, a decor tip, or a suggestion to solve one of their pain points within their budget. Be friendly and conversational. Start with "Hi there,".`
     });
-    return response.text;
+    return response.text ?? "No tip available at the moment.";
 };
 
 export const extractColorPalette = async (image: ImageFile): Promise<string[]> => {
@@ -276,8 +277,10 @@ export const extractColorPalette = async (image: ImageFile): Promise<string[]> =
     });
 
     try {
-        const parsed = JSON.parse(response.text);
-        if (parsed.colors && Array.isArray(parsed.colors) && parsed.colors.length > 0) return parsed.colors;
+        if (response.text) {
+            const parsed = JSON.parse(response.text);
+            if (parsed.colors && Array.isArray(parsed.colors) && parsed.colors.length > 0) return parsed.colors;
+        }
     } catch (e) {
         console.error("Failed to parse color palette:", e);
     }
