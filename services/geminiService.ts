@@ -1,11 +1,15 @@
 import { GoogleGenAI, Modality, GenerateContentResponse, Type } from "@google/genai";
 import { ChatMessage, ImageFile, StyleProfile, HomeProfile, InventoryItem } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable is not set");
+// In a Next.js app, environment variables for the browser MUST be prefixed with NEXT_PUBLIC_.
+const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+
+if (!apiKey) {
+    // This error is caught by the calling function and displayed to the user.
+    throw new Error("NEXT_PUBLIC_API_KEY environment variable is not set. Please ensure it's configured in your Vercel project settings.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey });
 
 const fileToGenerativePart = (file: ImageFile) => {
   return {
