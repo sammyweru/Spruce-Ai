@@ -232,7 +232,7 @@ export const generateVirtualStaging = async (image: ImageFile, style: string): P
         config: { responseModalities: [Modality.IMAGE] }
     });
     
-    const firstPart = response.candidates?.[0]?.content?.parts[0];
+    const firstPart = response.candidates?.[0]?.content?.parts?.[0];
     if (firstPart && firstPart.inlineData && firstPart.inlineData.data && firstPart.inlineData.mimeType) {
         return {
             base64: firstPart.inlineData.data,
@@ -302,7 +302,7 @@ export const generateSeasonalLandscape = async (image: ImageFile, season: string
         }
     });
 
-    const firstPart = response.candidates?.[0]?.content?.parts[0];
+    const firstPart = response.candidates?.[0]?.content?.parts?.[0];
     if (firstPart && firstPart.inlineData && firstPart.inlineData.data && firstPart.inlineData.mimeType) {
         return {
             base64: firstPart.inlineData.data,
